@@ -1,12 +1,10 @@
 extern crate sdl2;
-extern crate ansi_parser;
 
 use sdl2::pixels::Color;
 use sdl2::render::WindowCanvas;
 use crate::renderer::TermRenderer;
 use sdl2::rect::Rect;
 use std::borrow::Borrow;
-use self::ansi_parser::{AnsiParser, Output, AnsiSequence};
 use std::ops::Add;
 use std::fmt::{Display, Formatter, Error};
 use std::ffi::CString;

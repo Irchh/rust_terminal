@@ -8,7 +8,6 @@ edition = "2018"
 [dependencies]
 nix = "0.21.0"
 libc = "*"
-ansi-parser = "0.8.0"
 
 [dependencies.sdl2]
 version = "0.34"
