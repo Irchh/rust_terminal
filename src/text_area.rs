@@ -387,20 +387,23 @@ impl TextArea {
                     self.curr_bg_col = COL_ARR[(a -40) as usize];
                 }
                 if a == 38 || a == 48 {
-                    println!("COLOR MOMENT");
                     if i < m.len() {
                         match m[i] {
                             2 => {
-                                println!("COLOR 2");
                                 i+=1;
                                 let r = m[i];
                                 i+=1;
                                 let g = m[i];
                                 i+=1;
                                 let b = m[i];
+                                if a == 38 {
+                                    self.fg_is_default = false;
+                                    self.curr_fg_col = Color::RGB(r as u8, g as u8, b as u8);
+                                } else {
+                                    self.curr_bg_col = Color::RGB(r as u8, g as u8, b as u8);
+                                }
                             }
                             5 => {
-                                println!("COLOR 5");
                                 i+=1;
                                 if m[i] <= 16 {
 
@@ -445,7 +448,6 @@ impl TextArea {
                 }
             }
         }
-        i+=1;
         if i < m.len() {
             m.drain(0..i);
             n = m[0].clone();
