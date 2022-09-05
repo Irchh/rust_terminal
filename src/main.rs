@@ -1,11 +1,12 @@
 mod renderer;
 mod text_area;
 mod tty;
-mod ansi_escaper;
+mod term;
 
 extern crate sdl2;
 extern crate nix;
 extern crate libc;
+extern crate rust_ansi;
 
 use sdl2::pixels::Color;
 use sdl2::event::Event;
@@ -16,13 +17,10 @@ use std::ffi::{CString, CStr};
 use std::env;
 use std::os::raw::c_char;
 use std::thread::sleep_ms;
-
-static mut LOG_LEVEL: Option<i32> = Some(0);
+use rust_ansi::ansi_escaper;
+use crate::text_area::TextArea;
 
 fn main() {
-    unsafe {
-        LOG_LEVEL = Some(2);
-    }
     let con = tty::ForkPTY::new(80, 24);
 
     let sdl_context = sdl2::init().unwrap();
@@ -39,7 +37,7 @@ fn main() {
 
     println!("Is text input active?: {}", ren.video_subsystem.text_input().is_active());
 
-    let mut ta = text_area::create_ta((window.size().0 / char_surf.width()) as usize, (window.size().1 / char_surf.height()) as usize,
+    let mut ta = TextArea::new((window.size().0 / char_surf.width()) as usize, (window.size().1 / char_surf.height()) as usize,
                                       char_surf.width(), char_surf.height());
 
     let mut canvas = window.into_canvas()
@@ -310,6 +308,6 @@ fn main() {
     }
 
     println!("Hello, world!");
-    let seq = ansi_escaper::escape(String::from("\x1Bm"));
+    let seq = ansi_escaper::escape(String::from("POG\x1b[1;31m"));
     println!("Escaped str: {}\nSize: {}", seq.0, seq.1);
 }

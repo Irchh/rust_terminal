@@ -43,4 +43,5 @@ for r in {0..5}; do
     printf "\n"
   done
   printf "\n"
+  sleep 0.2
 done

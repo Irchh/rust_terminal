@@ -6,7 +6,6 @@ use nix::sys::uio::pwrite;
 
 pub struct ForkPTY {
     fork_res: Option<ForkptyResult>,
-
 }
 
 impl ForkPTY {

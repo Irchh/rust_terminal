@@ -28,10 +28,6 @@ impl Clone for Cell {
             dirty: self.dirty
         }
     }
-
-    fn clone_from(&mut self, source: &Self) {
-        todo!()
-    }
 }
 
 impl Cell {
@@ -53,8 +49,8 @@ pub struct TextArea {
     font_height: u32,
     cells: Vec<Cell>,
 
-    x: u32,
-    y: u32,
+    x: usize,
+    y: usize,
     buf_str: String,
 
     curr_fg_col: Color,
@@ -63,63 +59,8 @@ pub struct TextArea {
     curr_is_bold: bool,
     inverse: bool,
 
-    top_margin: u32,
-    bottom_margin: u32,
-}
-
-enum AnsiType {
-    SS2, // Single Shift 2
-    SS3, // Single Shift 3
-    DCS, // Device Control String
-    CSI, // Control Sequence Introducer
-    ST,  // String Terminator
-    OSC, // Operating System Command
-    RIS, // Reset to Initial State
-
-    // These three can be ignored (after parsing), as they are usually application specific
-    SOS, // Start of String
-    PM,  // Privacy Message
-    APC, // Application Program Command
-
-    Unknown,
-}
-
-impl AnsiType {
-    pub fn from(ch: char) -> AnsiType {
-        use crate::text_area::AnsiType::*;
-        match ch {
-            'N' => { SS2 }
-            'O' => { SS3 }
-            'P' => { DCS }
-            '[' => { CSI }
-            '\\' => { ST }
-            ']' => { OSC }
-            'X' => { SOS }
-            '*' => { PM }
-            '_' => { APC }
-            'c' => { RIS }
-            _ => { Unknown }
-        }
-    }
-}
-
-impl Display for AnsiType {
-    fn fmt(&self, f: &mut Formatter<'_>) -> Result<(), Error> {
-        let _ = match self {
-            AnsiType::SS2 => {f.write_str("SS2")}
-            AnsiType::SS3 => {f.write_str("SS3")}
-            AnsiType::DCS => {f.write_str("DCS")}
-            AnsiType::CSI => {f.write_str("CSI")}
-            AnsiType::ST => {f.write_str("ST")}
-            AnsiType::OSC => {f.write_str("OSC")}
-            AnsiType::RIS => {f.write_str("RIS")}
-            AnsiType::SOS => {f.write_str("SOS")}
-            AnsiType::PM => {f.write_str("PM")}
-            AnsiType::APC => {f.write_str("APC")}
-            AnsiType::Unknown => {f.write_str("Unknown")}
-        };
-        Ok(())
-    }
+    top_margin: usize,
+    bottom_margin: usize,
 }
 
 const COL_ARR: [Color; 8] = [
@@ -150,6 +91,43 @@ const FG_COL: Color = COL_ARR[7];
 const BOLD_FG_COL: Color = BOLD_COL_ARR[7];
 
 impl TextArea {
+    pub fn new(width: usize, height: usize, font_width: u32, font_height: u32) -> Self {
+        let mut ta = Self {
+            width,
+            height,
+            font_width,
+            font_height,
+            cells: std::vec::Vec::new(),
+
+            x: 0,
+            y: 0,
+            buf_str: String::new(),
+
+            curr_fg_col: FG_COL,
+            curr_bg_col: BG_COL,
+            fg_is_default: true,
+            curr_is_bold: false,
+            inverse: false,
+
+            top_margin: 0,
+            bottom_margin: height - 1
+        };
+
+        for _ in 0..width*height {
+            ta.cells.push(Cell{
+                ch: ' ',
+                fg_col: ta.curr_fg_col,
+                bg_col: ta.curr_bg_col,
+                bold: false,
+                dirty: true
+            });
+        }
+
+        println!("R: {:#X}, G: {:#X}, B: {:#X}", ta.cells[0].fg_col.r, ta.cells[0].fg_col.g, ta.cells[0].fg_col.b);
+
+        ta
+    }
+
     fn _set_cell(&mut self, i: usize, ch: char) -> bool {
         if i > self.width * self.height {
             return false;
@@ -162,19 +140,19 @@ impl TextArea {
         true
     }
 
-    pub fn set_cell(&mut self, x: u32, y: u32, ch: char) -> bool {
-        if x >= self.width as u32 || y >= self.height as u32 {
+    pub fn set_cell(&mut self, x: usize, y: usize, ch: char) -> bool {
+        if x >= self.width || y >= self.height {
             return false;
         }
-        let i = (x+y*(self.width as u32)) as usize;
+        let i = x + y * self.width;
         return self._set_cell(i, ch);
     }
 
-    fn scroll_up(&mut self, n: u32) {
-        if n >= self.height as u32 {
+    fn scroll_up(&mut self, n: usize) {
+        if n >= self.height {
             self.clear_screen(2);
         } else {
-            let offset = ((n) as usize)*self.width;
+            let offset = n * self.width;
             for i in 0..(self.width * self.height)-offset {
                 self.cells[i] = Cell::from(self.cells[i+offset].clone());
             }
@@ -185,8 +163,8 @@ impl TextArea {
         }
     }
 
-    fn scroll_down(&mut self, n: u32) {
-        if n >= self.height as u32 {
+    fn scroll_down(&mut self, n: usize) {
+        if n >= self.height {
             self.clear_screen(2);
         } else {
             let offset = ((n) as usize)*self.width;
@@ -200,25 +178,25 @@ impl TextArea {
         }
     }
 
-    fn _copy(&mut self, x: u32, y: u32, w: u32, h: u32, dx: u32, dy: u32) {
+    fn _copy(&mut self, x: usize, y: usize, w: usize, h: usize, dx: usize, dy: usize) {
         let cloned_cells = self.cells.clone();
 
         for X in 0..w {
             for Y in 0..h {
-                if X >= self.width as u32 || Y >= self.height as u32 {
+                if X >= self.width || Y >= self.height {
                     continue;
                 }
-                let ix = x+X;
-                let iy = y+Y;
-                let dx = dx+X;
-                let dy = dy+Y;
-                if ix >= self.width as u32 || iy >= self.height as u32 {
+                let ix = x + X;
+                let iy = y + Y;
+                let dx = dx + X;
+                let dy = dy + Y;
+                if ix >= self.width || iy >= self.height {
                     self.set_cell(ix, iy, ' ');
-                } else if dx >= self.width as u32 || dy >= self.height as u32 {
+                } else if dx >= self.width || dy >= self.height {
                     continue;
                 } else {
-                    let icell = ix+iy*(self.width as u32);
-                    let dcell = dx+dy*(self.width as u32);
+                    let icell = ix + iy * self.width;
+                    let dcell = dx + dy * self.width;
                     self.cells[dcell as usize] = Cell::from(cloned_cells[icell as usize].clone());
                 }
             }
@@ -249,7 +227,7 @@ impl TextArea {
 
                 self.set_cell(self.x, self.y, ch);
                 self.x += 1;
-                if self.x > self.width as u32 {
+                if self.x > self.width {
                     self.y += 1;
                     self.x = 0;
                 }
@@ -257,26 +235,25 @@ impl TextArea {
         }
         if self.y > self.bottom_margin {
             //self.scroll_up(self.y-self.bottom_margin);
-            let diff = self.y-self.bottom_margin;
-            let height = self.bottom_margin-self.top_margin;
+            let diff = self.y - self.bottom_margin;
+            let height = self.bottom_margin - self.top_margin;
             let to_y = self.top_margin;
-            let from_y = self.top_margin+diff;
-            self._copy(0, from_y, self.width as u32, height, 0, to_y);
-            //self._copy(0, self.top_margin+(self.y-self.bottom_margin), self.width as u32, self.y-self.bottom_margin, 0, self.top_margin);
+            let from_y = self.top_margin + diff;
+            self._copy(0, from_y, self.width, height, 0, to_y);
             println!("Setting self.y = {}", self.bottom_margin);
             self.y = self.bottom_margin;
             self.clear_line(2);
         }
-        if self.y >= self.height as u32 {
-            self.scroll_up(self.y-(self.height as u32)+1);
-            self.y -= self.y-(self.height as u32)+1;
+        if self.y >= self.height {
+            self.scroll_up(self.y - self.height + 1);
+            self.y -= self.y - self.height + 1;
         }
     }
 
-    fn clear_line(&mut self, n: u32) {
+    fn clear_line(&mut self, n: usize) {
         match n {
             0 => {
-                for x in self.x..(self.width as u32) {
+                for x in self.x..self.width {
                     self.set_cell(x, self.y, ' ');
                 }
             }
@@ -286,7 +263,7 @@ impl TextArea {
                 }
             }
             2 => {
-                for x in 0..(self.width as u32) {
+                for x in 0..self.width {
                     self.set_cell(x, self.y, ' ');
                 }
             }
@@ -294,15 +271,15 @@ impl TextArea {
         }
     }
 
-    fn clear_screen(&mut self, n: u32) {
+    fn clear_screen(&mut self, n: usize) {
         let temp_y = self.y;
         match n {
             0 => {
                 self.clear_line(n);
-                if self.y < self.height as u32 {
+                if self.y < self.height {
                     self.y += 1;
                 }
-                for y in self.y..(self.height as u32) {
+                for y in self.y..self.height {
                     self.y = y;
                     self.clear_line(2);
                 }
@@ -319,7 +296,7 @@ impl TextArea {
             }
             2 => /* Clear screen */ {
                 for y in 0..self.height {
-                    self.y = y as u32;
+                    self.y = y;
                     self.clear_line(2);
                 }
             }
@@ -330,7 +307,7 @@ impl TextArea {
         self.y = temp_y;
     }
 
-    fn sgr(&mut self, mut n: u32, mut m: Vec<u32>) {
+    fn sgr(&mut self, mut n: usize, mut m: Vec<usize>) {
         let mut i = 0;
         match n {
             0 => {
@@ -499,6 +476,9 @@ impl TextArea {
                 }
                 if res.1 > 0 {
                     match res.0 {
+                        AnsiType::Text(s) => {
+                            self.print_str(s.as_str(), win);
+                        }
                         AnsiType::SS2 => {}
                         AnsiType::SS3 => {}
                         AnsiType::DCS => {}
@@ -508,9 +488,9 @@ impl TextArea {
                                 CSIType::CUD(n) => {
                                     self.y += n;
                                 }
-                                CSIType::CUF(n) => {self.x += n; if self.x > self.width as u32 {self.x = self.width as u32}}
+                                CSIType::CUF(n) => {self.x += n; if self.x > self.width {self.x = self.width}}
                                 CSIType::CUB(n) => {self.x -= if self.x >= n { n } else { self.x }}
-                                CSIType::CNL(n) => {self.x = 0; self.y += n; if self.y > self.height as u32 {self.y = self.height as u32}}
+                                CSIType::CNL(n) => {self.x = 0; self.y += n; if self.y > self.height {self.y = self.height}}
                                 CSIType::CPL(n) => {self.x = 0; self.y -= if self.y >= n { n } else { self.y }}
                                 CSIType::CHA(n) => {self.x = n-1;}
                                 CSIType::CVA(n) => {self.y = n-1;}
@@ -550,7 +530,7 @@ impl TextArea {
                                     };
                                     let height = self.bottom_margin-self.top_margin;
 
-                                    self._copy(0, from_y, self.width as u32, height, 0, to_y);
+                                    self._copy(0, from_y, self.width, height, 0, to_y);
                                     self.clear_line(2);
                                 }
                                 CSIType::HVP(n, m) => {
@@ -603,20 +583,20 @@ impl TextArea {
                         let height = self.bottom_margin-self.top_margin;
                         let to_y = self.top_margin;
                         let from_y = self.top_margin+diff;
-                        self._copy(0, from_y, self.width as u32, height, 0, to_y);
+                        self._copy(0, from_y, self.width, height, 0, to_y);
                         //self._copy(0, self.top_margin+(self.y-self.bottom_margin), self.width as u32, self.y-self.bottom_margin, 0, self.top_margin);
                         println!("Setting self.y = {}", self.bottom_margin);
                         self.y = self.bottom_margin;
                         self.clear_line(2);
                     }
-                    if self.x > self.width as u32 {
-                        self.x = self.width as u32
+                    if self.x > self.width {
+                        self.x = self.width;
                     }
                 } /* if res.1 > 0 */ else {
 
                 }
                 continue;
-            }
+            } // if escaping
             match char {
                 '\x1B' /* Escape */ => {
                     escaping = true;
@@ -644,7 +624,7 @@ impl TextArea {
         for x in 0..self.width {
             for y in 0..self.height {
                 let i = x + y * self.width;
-                if self.x == x as u32 && self.y == y as u32 {
+                if self.x == x && self.y == y {
                     self.cells[i].dirty = true;
                 } else if !self.cells[i].dirty {
                     continue;
@@ -663,7 +643,7 @@ impl TextArea {
                     bgc = self.cells[i].bg_col;
                 }
 
-                if self.x == x as u32 && self.y == y as u32 {
+                if self.x == x && self.y == y {
                     let tmp_col = fgc;
                     fgc = bgc;
                     bgc = tmp_col;
@@ -683,47 +663,10 @@ impl TextArea {
                 let text_rect = Rect::new(0, 0, self.font_width, self.font_height);
                 let real_rect = Rect::new((x * ((self.font_width) as usize)) as i32, (y * (self.font_height as usize)) as i32, self.font_width, self.font_height);
                 canvas.copy(text_texture.borrow(), text_rect, real_rect).unwrap();
-                if !(self.x == x as u32 && self.y == y as u32) {
+                if !(self.x == x && self.y == y) {
                     self.cells[i].dirty = false;
                 }
             }
         }
     }
-}
-
-pub fn create_ta(width: usize, height: usize, font_width: u32, font_height: u32) -> TextArea {
-    let mut ta = TextArea {
-        width,
-        height,
-        font_width,
-        font_height,
-        cells: std::vec::Vec::new(),
-
-        x: 0,
-        y: 0,
-        buf_str: String::new(),
-
-        curr_fg_col: FG_COL,
-        curr_bg_col: BG_COL,
-        fg_is_default: true,
-        curr_is_bold: false,
-        inverse: false,
-
-        top_margin: 0,
-        bottom_margin: (height - 1) as u32
-    };
-
-    for _ in 0..width*height {
-        ta.cells.push(Cell{
-            ch: ' ',
-            fg_col: ta.curr_fg_col,
-            bg_col: ta.curr_bg_col,
-            bold: false,
-            dirty: true
-        });
-    }
-
-    println!("R: {:#X}, G: {:#X}, B: {:#X}", ta.cells[0].fg_col.r, ta.cells[0].fg_col.g, ta.cells[0].fg_col.b);
-
-    ta
 }

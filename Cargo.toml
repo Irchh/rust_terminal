@@ -13,3 +13,8 @@ libc = "*"
 version = "0.34"
 default-features = false
 features = ["ttf"]
+
+[dependencies.rust_ansi]
+default-features = true
+git = "https://github.com/Irchh/rust_ansi"
+rev = "6da89c68"
