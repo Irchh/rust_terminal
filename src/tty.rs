@@ -1,8 +1,10 @@
 use nix::pty::ForkptyResult;
 use nix::unistd::{ForkResult, sleep, read, write};
 use std::ffi::CString;
+use nix::errno::Errno;
 use nix::Error;
 use nix::sys::uio::pwrite;
+use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
 
 pub struct ForkPTY {
     fork_res: Option<ForkptyResult>,
@@ -18,7 +20,7 @@ impl ForkPTY {
         res
     }
     pub fn open(&mut self, width: u16, height: u16) {
-        let ws = libc::winsize{
+        let ws = libc::winsize {
             ws_row: height,
             ws_col: width,
             ws_xpixel: 0,
@@ -63,15 +65,37 @@ impl ForkPTY {
         };
     } /* pub fn open */
 
-    pub fn read(&self ) -> ([u8; 4096], usize) {
+    pub fn read(&self) -> Result<([u8; 4096], usize), ()> {
         let mut t: [u8; 4096] = [0; 4096];
         if self.fork_res.is_none() {
-            return (t, 0)
+            return Ok((t, 0))
+        }
+        match self.fork_res.unwrap().fork_result {
+            ForkResult::Parent { child } => {
+                let result = waitpid(child, Some(WaitPidFlag::WNOHANG));
+                match result {
+                    Ok(status) => {
+                        match status {
+                            WaitStatus::Signaled(_, _, _) => todo!(),
+                            WaitStatus::Stopped(_, _) => todo!(),
+                            WaitStatus::PtraceEvent(_, _, _) => todo!(),
+                            WaitStatus::PtraceSyscall(_) => todo!(),
+                            WaitStatus::Continued(_) => todo!(),
+                            WaitStatus::StillAlive => {}
+                            _ => return Err(()),
+                        }
+                    }
+                    Err(_) => {
+                        return Err(())
+                    }
+                }
+            }
+            ForkResult::Child => {}
         }
         let read_len = read(self.fork_res.unwrap().master, &mut t);
         match read_len {
-            Ok(_) => {(t,read_len.unwrap())}
-            Err(_) => {(t,0)}
+            Ok(_) => Ok((t,read_len.unwrap())),
+            Err(_) => Ok((t, 0)),
         }
     }
 

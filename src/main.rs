@@ -53,6 +53,15 @@ fn main() {
 
     'running: loop {
         let conres = con.read();
+        match conres {
+            Ok(_) => {}
+            Err(_) => {
+                println!("Child process exited!");
+                break 'running;
+            }
+        }
+        let conres = conres.unwrap();
+
         if conres.1 > 0 {
             let mut res_str = String::new();
             for i in 0..conres.1 {
@@ -306,8 +315,4 @@ fn main() {
         canvas.present();
         ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
-
-    println!("Hello, world!");
-    let seq = ansi_escaper::escape(String::from("POG\x1b[1;31m"));
-    println!("Escaped str: {}\nSize: {}", seq.0, seq.1);
 }
