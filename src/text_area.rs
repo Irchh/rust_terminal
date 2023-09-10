@@ -555,6 +555,9 @@ impl TextArea {
                                     self.x = 0;
                                     self.y = self.top_margin;
                                 }
+                                CSIType::DECTCEM(_) => {
+                                    // TODO: Implement cursor hiding
+                                }
                                 CSIType::Unknown(s) => {
                                     println!("UNKNOWN: {}", s);
                                 }

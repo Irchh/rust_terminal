@@ -57,6 +57,10 @@ impl TermInterface for Terminal {
         todo!()
     }
 
+    fn dectcem(&self, show: bool) {
+        todo!()
+    }
+
     fn device_status_report(&self) -> (usize, usize) {
         todo!()
     }
