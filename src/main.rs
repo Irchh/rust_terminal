@@ -18,6 +18,7 @@ use std::env;
 use std::os::raw::c_char;
 use std::thread::sleep_ms;
 use rust_ansi::ansi_escaper;
+use crate::renderer::TermRenderer;
 use crate::text_area::TextArea;
 
 fn main() {
@@ -25,7 +26,7 @@ fn main() {
 
     let sdl_context = sdl2::init().unwrap();
     let ttf_context = sdl2::ttf::init().unwrap();
-    let ren = renderer::create_renderer(&sdl_context, &ttf_context);
+    let ren = TermRenderer::new(&sdl_context, &ttf_context);
     let char_surf = ren.font.render_char('i')
         .shaded(Color{r:0,g:0,b:0,a:0}, Color{r:0,g:0,b:0,a:0})
         .unwrap();
@@ -293,13 +294,15 @@ fn main() {
                         Keycode::KbdIllumUp => {}
                         Keycode::Eject => {}
                         Keycode::Sleep => {}
-                        kc => {}
+                        kc => {
+                            println!("Unhandled key pressed: {kc}")
+                        }
                     }
 
                     //ta.print_char(ch.to_ascii_lowercase());
                 },
-                e => {
-                    //println!("{:?}", e)
+                _e => {
+                    //println!("{:?}", _e)
                 }
             }
         }
@@ -313,6 +316,6 @@ fn main() {
         // The rest of the game loop goes here...
 
         canvas.present();
-        ::std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+        std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 }

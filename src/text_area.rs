@@ -97,7 +97,7 @@ impl TextArea {
             height,
             font_width,
             font_height,
-            cells: std::vec::Vec::new(),
+            cells: Vec::new(),
 
             x: 0,
             y: 0,

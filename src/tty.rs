@@ -30,7 +30,7 @@ impl ForkPTY {
         self.fork_res = Option::from(response);
 
         match response.fork_result {
-            ForkResult::Parent { child } => {
+            ForkResult::Parent { child: _ } => {
                 unsafe {libc::fcntl(response.master, libc::F_SETFL, libc::fcntl(response.master, libc::F_GETFL) | libc::O_NONBLOCK);}
             }
             ForkResult::Child => {
@@ -60,7 +60,7 @@ impl ForkPTY {
                 let executable = CString::new("/usr/bin/env".as_bytes()).unwrap();
                 let argv: [CString; 3] = [executable.clone(), CString::new("TERM=xterm-256color").unwrap(), CString::new("vim").unwrap()]; // */
 
-                let res = nix::unistd::execv(executable.as_c_str(), &argv);
+                let _res = nix::unistd::execv(executable.as_c_str(), &argv);
             }
         };
     } /* pub fn open */

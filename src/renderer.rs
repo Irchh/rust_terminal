@@ -13,15 +13,15 @@ pub struct TermRenderer<'a> {
     pub video_subsystem: VideoSubsystem,
 }
 
-pub fn create_renderer<'a>(sdl_context: &'a Sdl, ttf_context: &'a Sdl2TtfContext) -> TermRenderer<'a> {
-    let ren = TermRenderer {
-        sdl_context,
-        ttf_context,
-        //font: ttf_context.load_font("/usr/share/fonts/TTF/DroidSansMono.ttf", 15).unwrap(),
-        font: ttf_context.load_font("/usr/share/fonts/TTF/Hack-Regular.ttf", 15).unwrap(),
-        bold_font: ttf_context.load_font("/usr/share/fonts/TTF/Hack-Bold.ttf", 15).unwrap(),
-        video_subsystem: sdl_context.video().unwrap(),
-    };
-
-    ren
+impl<'a> TermRenderer<'a> {
+    pub fn new(sdl_context: &'a Sdl, ttf_context: &'a Sdl2TtfContext) -> TermRenderer<'a> {
+        Self {
+            sdl_context,
+            ttf_context,
+            //font: ttf_context.load_font("/usr/share/fonts/TTF/DroidSansMono.ttf", 15).unwrap(),
+            font: ttf_context.load_font("/usr/share/fonts/TTF/Hack-Regular.ttf", 15).unwrap(),
+            bold_font: ttf_context.load_font("/usr/share/fonts/TTF/Hack-Bold.ttf", 15).unwrap(),
+            video_subsystem: sdl_context.video().unwrap(),
+        }
+    }
 }
