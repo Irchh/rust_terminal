@@ -347,21 +347,21 @@ impl TextArea {
             mut a => {
                 if a >= 90 && a <= 97 {
                     self.fg_is_default = false;
-                    self.curr_fg_col = BOLD_COL_ARR[(a-90) as usize];
+                    self.curr_fg_col = BOLD_COL_ARR[a - 90];
                 }
                 if a >= 100 && a <= 107 {
-                    self.curr_bg_col = BOLD_COL_ARR[(a-100) as usize];
+                    self.curr_bg_col = BOLD_COL_ARR[a - 100];
                 }
                 if a >= 30 && a <= 37 {
                     self.fg_is_default = false;
                     if self.curr_is_bold {
-                        self.curr_fg_col = BOLD_COL_ARR[(a -30) as usize];
+                        self.curr_fg_col = BOLD_COL_ARR[a - 30];
                     } else {
-                        self.curr_fg_col = COL_ARR[(a -30) as usize];
+                        self.curr_fg_col = COL_ARR[a - 30];
                     }
                 }
                 if a >= 40 && a <= 47 {
-                    self.curr_bg_col = COL_ARR[(a -40) as usize];
+                    self.curr_bg_col = COL_ARR[a - 40];
                 }
                 if a == 38 || a == 48 {
                     if i < m.len() {
@@ -376,6 +376,7 @@ impl TextArea {
                                 if a == 38 {
                                     self.fg_is_default = false;
                                     self.curr_fg_col = Color::RGB(r as u8, g as u8, b as u8);
+                                    println!("Setting FG color to {:?}\n\n", self.curr_fg_col);
                                 } else {
                                     self.curr_bg_col = Color::RGB(r as u8, g as u8, b as u8);
                                 }
