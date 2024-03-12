@@ -5,10 +5,7 @@ use sdl2::render::WindowCanvas;
 use crate::renderer::TermRenderer;
 use sdl2::rect::Rect;
 use std::borrow::Borrow;
-use std::ops::Add;
-use std::fmt::{Display, Formatter, Error};
 use std::ffi::CString;
-use nix::sys::ptrace::cont;
 
 struct Cell {
     ch: char,
@@ -63,7 +60,7 @@ pub struct TextArea {
     bottom_margin: usize,
 }
 
-const COL_ARR: [Color; 8] = [
+pub const COL_ARR: [Color; 8] = [
     Color {r: 0x23, g: 0x26, b: 0x27, a: 0},     // BLACK
     Color {r: 0xed, g: 0x15, b: 0x15, a: 0},   // RED
     Color {r: 0x11, g: 0xd1, b: 0x16, a: 0},   // GREEN
@@ -73,7 +70,7 @@ const COL_ARR: [Color; 8] = [
     Color {r: 0x1a, g: 0xbc, b: 0x9c, a: 0}, // CYAN
     Color {r: 0xfc, g: 0xfc, b: 0xfc, a: 0}, // WHITE
 ];
-const BOLD_COL_ARR: [Color; 8] = [
+pub const BOLD_COL_ARR: [Color; 8] = [
     Color {r: 0x7f, g: 0x8c, b: 0x8d, a: 0},// BLACK
     Color {r: 0xc0, g: 0x39, b: 0x2b, a: 0},   // RED
     Color {r: 0x1c, g: 0xdc, b: 0x9a, a: 0},   // GREEN
@@ -84,11 +81,12 @@ const BOLD_COL_ARR: [Color; 8] = [
     Color {r: 0xff, g: 0xff, b: 0xff, a: 0}, // WHITE
 ];
 
-const BG_COL: Color = COL_ARR[0];
+pub const BG_COL: Color = COL_ARR[0];
+#[allow(dead_code)]
 const BOLD_BG_COL: Color = Color {r: 0x00, g: 0x00, b: 0x00, a: 0};
 
-const FG_COL: Color = COL_ARR[7];
-const BOLD_FG_COL: Color = BOLD_COL_ARR[7];
+pub const FG_COL: Color = COL_ARR[7];
+pub const BOLD_FG_COL: Color = BOLD_COL_ARR[7];
 
 impl TextArea {
     pub fn new(width: usize, height: usize, font_width: u32, font_height: u32) -> Self {
@@ -178,6 +176,7 @@ impl TextArea {
         }
     }
 
+    #[allow(non_snake_case)]
     fn _copy(&mut self, x: usize, y: usize, w: usize, h: usize, dx: usize, dy: usize) {
         let cloned_cells = self.cells.clone();
 
@@ -307,8 +306,13 @@ impl TextArea {
         self.y = temp_y;
     }
 
-    fn sgr(&mut self, mut n: usize, mut m: Vec<usize>) {
+    fn sgr(&mut self, mut m: Vec<usize>) {
         let mut i = 0;
+        let mut n = if m.len() > 0 {
+            m.remove(0)
+        } else {
+            return;
+        };
         match n {
             0 => {
                 //self.set_cell_color(self.x,self.y,Color {r: 0, g: 0, b: 0, a: 0},Color {r: 0, g: 0, b: 0, a: 0});
@@ -344,7 +348,7 @@ impl TextArea {
                 // Reset bg col
                 self.curr_bg_col = COL_ARR[0 as usize];
             }
-            mut a => {
+            a => {
                 if a >= 90 && a <= 97 {
                     self.fg_is_default = false;
                     self.curr_fg_col = BOLD_COL_ARR[a - 90];
@@ -431,7 +435,7 @@ impl TextArea {
             n = m[0].clone();
             m.remove(0);
             println!("Recursion: SGR n: {}, m: {:?}", n, m);
-            self.sgr(n,m.clone());
+            self.sgr(m);
         }
     }
 
@@ -442,7 +446,6 @@ impl TextArea {
         let mut escaping = false;
         let buf_str = self.buf_str.clone();
         let mut ansi_string = String::new();
-        let mut ansi_length = 0;
 
         /* Very very VERY weird code that takes the string and somehow finds all unicode chars and
          * makes them work i guess idk. Wrote when very tired
@@ -538,10 +541,10 @@ impl TextArea {
                                     self.y = if n == 0 {0} else {n-1};
                                     self.x = if m == 0 {0} else {m-1};
                                 }
-                                CSIType::SGR(n, m) => {
-                                    self.sgr(n,m);
+                                CSIType::SGR(n) => {
+                                    self.sgr(n);
                                 }
-                                CSIType::DECSLRM(n, m) => {
+                                CSIType::DECSLRM(_n, _m) => {
                                     // TODO: Implement left and right margins
                                 }
                                 CSIType::DECSTBM(n, m) => {
@@ -567,8 +570,8 @@ impl TextArea {
                         AnsiType::ST => {}
                         AnsiType::OSC { kind } => {
                             match kind {
-                                OSCType::WindowTitle(title) => {win.set_title(title.as_str());}
-                                OSCType::Unknown(s) => {}
+                                OSCType::WindowTitle(title) => {win.set_title(title.as_str()).unwrap_or(());}
+                                OSCType::Unknown(_s) => {}
                             }
                         }
                         AnsiType::RIS => {}
@@ -580,7 +583,6 @@ impl TextArea {
                     }
                     escaping = false;
                     ansi_string.clear();
-                    ansi_length = res.1;
                     if self.y > self.bottom_margin {
                         //self.scroll_up(self.y-self.bottom_margin);
                         let diff = self.y-self.bottom_margin;

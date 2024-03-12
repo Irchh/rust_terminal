@@ -10,28 +10,29 @@ extern crate rust_ansi;
 
 use sdl2::pixels::Color;
 use sdl2::event::Event;
-use sdl2::keyboard::{Scancode, Keycode};
+use sdl2::keyboard::Keycode;
 use std::time::Duration;
-use nix::unistd::{ForkResult, sleep, read};
-use std::ffi::{CString, CStr};
-use std::env;
-use std::os::raw::c_char;
-use std::thread::sleep_ms;
 use rust_ansi::ansi_escaper;
+use rust_ansi::term::Term;
 use crate::renderer::TermRenderer;
+use crate::term::Terminal;
 use crate::text_area::TextArea;
 
 fn main() {
-    let con = tty::ForkPTY::new(80, 24);
+    main_new();
+}
 
+fn main_old() {
+    let con = tty::ForkPTY::new(80, 24);
     let sdl_context = sdl2::init().unwrap();
     let ttf_context = sdl2::ttf::init().unwrap();
-    let ren = TermRenderer::new(&sdl_context, &ttf_context);
+
+    let ren = TermRenderer::new(&sdl_context, &ttf_context, 80, 24);
     let char_surf = ren.font.render_char('i')
         .shaded(Color{r:0,g:0,b:0,a:0}, Color{r:0,g:0,b:0,a:0})
         .unwrap();
 
-    let mut window = ren.video_subsystem.window("Rust SDL2 Window!", char_surf.width()*80, char_surf.height()*24)
+    let window = ren.video_subsystem.window("Rust SDL2 Window!", char_surf.width()*80, char_surf.height()*24)
         .opengl()
         .build()
         .unwrap();
@@ -317,5 +318,46 @@ fn main() {
 
         canvas.present();
         std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
+    }
+}
+
+fn main_new() {
+    let sdl_context = sdl2::init().unwrap();
+    let ttf_context = sdl2::ttf::init().unwrap();
+    let mut renderer = TermRenderer::new(&sdl_context, &ttf_context, 80, 24);
+
+    let window = renderer.video_subsystem.window("Terminal", renderer.font_width*80, renderer.font_height*24)
+        .opengl()
+        .build()
+        .unwrap();
+
+    let mut canvas = window.into_canvas()
+        .build()
+        .unwrap();
+    std::thread::sleep(Duration::new(0, 10000000)); // Allow sdl to init before drawing anything
+
+    canvas.set_draw_color(Color::RGB(0, 0, 0));
+    canvas.clear();
+    canvas.present();
+
+    let mut event_pump = renderer.sdl_context.event_pump().unwrap();
+
+    //let con = tty::ForkPTY::new(80, 24);
+    let mut terminal = Term::new(Box::new(Terminal::new(80, 24)));
+
+    'running: loop {
+        for event in event_pump.poll_iter() {
+            match event {
+                Event::Quit {..} => {
+                    break 'running;
+                }
+                _ => {}
+            }
+        }
+        terminal.write("\x1B[0mGHe\x1B[0m");
+        renderer.render(terminal.framebuffer(), &mut canvas);
+        terminal.completed_render();
+        canvas.present();
+        //std::thread::sleep(Duration::new(0, 1_000_000_000u32 / 60));
     }
 }

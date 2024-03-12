@@ -1,9 +1,6 @@
 use nix::pty::ForkptyResult;
-use nix::unistd::{ForkResult, sleep, read, write};
+use nix::unistd::{ForkResult, read, write};
 use std::ffi::CString;
-use nix::errno::Errno;
-use nix::Error;
-use nix::sys::uio::pwrite;
 use nix::sys::wait::{waitpid, WaitPidFlag, WaitStatus};
 
 pub struct ForkPTY {

@@ -18,4 +18,4 @@ features = ["ttf"]
 [dependencies.rust_ansi]
 default-features = true
 git = "https://github.com/Irchh/rust_ansi"
-rev = "7b9ebc74"
+rev = "eaa244ba"
