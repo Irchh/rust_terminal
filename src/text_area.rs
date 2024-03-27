@@ -580,6 +580,7 @@ impl TextArea {
                         AnsiType::APC => {}
                         AnsiType::Incomplete => {}
                         AnsiType::Unknown(_) => {}
+                        AnsiType::SETCHARSET => {}
                     }
                     escaping = false;
                     ansi_string.clear();

@@ -76,15 +76,11 @@ impl<'a> TermRenderer<'a> {
                     cell.ch
                 };
 
-                let fgc;
-                let bgc;
-                if cell.inverse {
-                    fgc = cell.bg_col;
-                    bgc = cell.fg_col;
+                let (fgc, bgc) = if cell.inverse {
+                    (cell.bg_col, cell.fg_col)
                 } else {
-                    fgc = cell.fg_col;
-                    bgc = cell.bg_col;
-                }
+                    (cell.fg_col, cell.bg_col)
+                };
 
                 let text_surf = if cell.bold {
                     self.bold_font.render_char(ch)
