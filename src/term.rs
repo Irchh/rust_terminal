@@ -78,16 +78,16 @@ impl Terminal {
     }
 
     fn set_cell(&mut self, x: usize, y: usize, ch: char) {
-        if x > self.width || y > self.height {
+        if x > self.width || y > self.height || x == 0 || y == 0 {
             eprintln!("Trying to print outside the screen to position {}:{}, this is an error", x, y);
             return;
         }
-        self.cell_manager.cells[self.y as usize-1][self.x as usize-1].ch = ch;
-        self.cell_manager.cells[self.y as usize-1][self.x as usize-1].fg_col = self.curr_fg_col;
-        self.cell_manager.cells[self.y as usize-1][self.x as usize-1].bg_col = self.curr_bg_col;
-        self.cell_manager.cells[self.y as usize-1][self.x as usize-1].bold = self.curr_is_bold;
-        self.cell_manager.cells[self.y as usize-1][self.x as usize-1].inverse = self.curr_inverse;
-        self.cell_manager.cells[self.y as usize-1][self.x as usize-1].dirty = true;
+        self.cell_manager.cells[y-1][x-1].ch = ch;
+        self.cell_manager.cells[y-1][x-1].fg_col = self.curr_fg_col;
+        self.cell_manager.cells[y-1][x-1].bg_col = self.curr_bg_col;
+        self.cell_manager.cells[y-1][x-1].bold = self.curr_is_bold;
+        self.cell_manager.cells[y-1][x-1].inverse = self.curr_inverse;
+        self.cell_manager.cells[y-1][x-1].dirty = true;
     }
 
     pub fn default_cell(&self) -> CharacterCell {
@@ -254,7 +254,16 @@ impl TermInterface<CharacterCellManager> for Terminal {
     }
 
     fn il(&mut self, n: usize) {
-        todo!()
+        // Moves current line and lines below down by `n` lines, and clears the current line
+        let saved_row = self.cell_manager.cells[self.y as usize-1].clone();
+        self.erase_in_line(2);
+        let empty_row = self.cell_manager.cells[self.y as usize-1].clone();
+        self.cell_manager.cells[self.y as usize-1] = saved_row;
+
+        for _ in 0..n {
+            self.cell_manager.cells.insert(self.y as usize - 1, empty_row.clone());
+            self.cell_manager.cells.pop();
+        }
     }
 
     fn select_graphics_rendition(&mut self, mut n: Vec<usize>) {
@@ -379,6 +388,6 @@ impl TermInterface<CharacterCellManager> for Terminal {
     }
 
     fn unknown(&mut self, s: String) {
-        todo!()
+        eprintln!("Warning: Unknown escape sequence: {s:?}")
     }
 }

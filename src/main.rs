@@ -323,7 +323,7 @@ fn main_old() {
 
 fn main_new() {
     let width = 80;
-    let height = 50;
+    let height = 24;
     let con = tty::ForkPTY::new(width as u16, height as u16);
     let sdl_context = sdl2::init().unwrap();
     let ttf_context = sdl2::ttf::init().unwrap();
